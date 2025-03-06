@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8">
+    <file url="file://$PROJECT_DIR$/.gitignore" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Weather/main.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Weather/merge.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/YRX/Session1/match1/md5.js" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/YRX/Session1/match15/main.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/YRX/Session1/match16/main.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/YRX/Session1/match19/main.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/config.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ipzan/get_proxy.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/utils/get_ip.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/今日校园/sign.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/微博/getusercomment.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/爱奇艺/rank.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/网易云/reverse.js" charset="GBK" />
+    <file url="file://$PROJECT_DIR$/网易云/音乐人/getInfo.py" charset="UTF-8" />
+    <file url="PROJECT" charset="UTF-8" />
+  </component>
+</project>

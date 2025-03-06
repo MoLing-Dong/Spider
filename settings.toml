@@ -1,0 +1,13 @@
+[default]
+DEBUG = false
+PORT = 8000
+DATABASE_URL = "sqlite:///default.db"
+
+[development]
+DEBUG = true
+PORT = 8080
+DATABASE_URL = "sqlite:///development.db"
+
+[production]
+PORT = 80
+DATABASE_URL = "postgresql://user:password@host:port/dbname"
