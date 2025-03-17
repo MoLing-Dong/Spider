@@ -10,10 +10,10 @@ from loguru import logger
 from psycopg2 import pool
 
 # 定义连接参数
-hostname = ""
-database = ""
-username = ""
-password = ""
+hostname = '47.101.144.135'
+database = 'weibo_comments'
+username = 'weibo_comments'
+password = 'WQNjX677dZQsKJtw'
 port = 5432  # 默认的 PostgreSQL 端口号
 
 # 使用链接池

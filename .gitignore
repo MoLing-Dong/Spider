@@ -102,7 +102,6 @@ dist
 
 # vuepress v2.x temp and cache directory
 .temp
-.cache
 
 # Serverless directories
 .serverless/
@@ -138,7 +137,9 @@ dist
 #html
 *.html
 
-!/统一认证/test2.json
-
 # Ignore dynaconf secret files
 .secrets.*
+
+.idea/
+网易云/音乐人/user_list.json
+/hierarchy.json
