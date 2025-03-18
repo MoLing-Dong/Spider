@@ -142,4 +142,6 @@ dist
 
 .idea/
 网易云/音乐人/user_list.json
-/hierarchy.json
+
+/e_to_china/*.json
+/e_to_china/*.jsonl
