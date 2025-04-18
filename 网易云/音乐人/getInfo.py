@@ -1,3 +1,4 @@
+# 推歌参谋 https://st.music.163.com/g/push-assiant
 import json
 from datetime import datetime, timedelta
 from operator import itemgetter
@@ -64,16 +65,16 @@ def create_session(cookies: Dict[str, str]) -> requests.Session:
 
 
 def post_request(
-    session: requests.Session,
-    url: str,
-    data: Dict[str, str] = None,
-    params: Dict[str, str] = None,
+        session: requests.Session,
+        url: str,
+        data: Dict[str, str] = None,
+        params: Dict[str, str] = None,
 ) -> str:
     """发送 POST 请求并打印响应结果"""
     try:
         response = session.post(url, params=params, data=data)
         response.raise_for_status()
-        logger.debug(response.text)
+        # logger.debug(response.text)
         return response.text
     except requests.RequestException as e:
         logger.error(f"请求 {url} 失败: {e}")
@@ -81,13 +82,13 @@ def post_request(
 
 
 def fetch_data(
-    session: requests.Session,
-    page_num,
-    page_size,
-    artist_id,
-    dt,
-    order_field,
-    order_direction,
+        session: requests.Session,
+        page_num,
+        page_size,
+        artist_id,
+        dt,
+        order_field,
+        order_direction,
 ):
     """获取实时歌曲数据"""
     json_data = {
