@@ -1,8 +1,8 @@
 
-from loguru import logger
-import requests
 import json
-import time
+
+import requests
+from loguru import logger
 
 # 配置日志
 logger.add("fetch.log", rotation="10MB", level="INFO")
