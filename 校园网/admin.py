@@ -1,14 +1,15 @@
 """
 校园网管理后台测试脚本
 """
+from io import BytesIO
+
+import easyocr  # 使用 easyocr 替换 tesserocr
+import execjs
+import numpy as np
 import requests
 from PIL import Image
-import easyocr  # 使用 easyocr 替换 tesserocr
-from io import BytesIO
-import numpy as np
-import execjs
-from loguru import logger
 from bs4 import BeautifulSoup
+from loguru import logger
 
 # 配置基本信息
 account = '20232430106'

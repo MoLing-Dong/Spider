@@ -1,7 +1,7 @@
-import requests
-from bs4 import BeautifulSoup
 import logging
 
+import requests
+from bs4 import BeautifulSoup
 
 # 定义全局变量
 cookies = {'UserId': '17351945672016447'}

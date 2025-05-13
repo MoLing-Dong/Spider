@@ -2,10 +2,12 @@
 """统一认证平台的登录
 """
 import time
+
 import execjs
 import requests
 from loguru import logger
 from lxml import etree
+
 from config import settings
 
 

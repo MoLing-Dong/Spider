@@ -3,8 +3,9 @@
 from  https://github.com/Pusnow/pyjsbn-rsa
 
 """
-import rsa
 import re
+
+import rsa
 import six
 
 

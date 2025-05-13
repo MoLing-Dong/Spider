@@ -1,8 +1,8 @@
 import json
 
 import requests
-from loguru import logger
 from fake_useragent import UserAgent
+from loguru import logger
 from requests.exceptions import RequestException
 
 # 定义常量

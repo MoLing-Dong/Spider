@@ -1,5 +1,5 @@
-import requests
 import bs4
+import requests
 
 cookies = {
     'datr': 'sB64Z27q0UK8r0_jFAovr6v7',
