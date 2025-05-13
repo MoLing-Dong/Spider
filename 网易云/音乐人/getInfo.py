@@ -310,7 +310,7 @@ def get_js_path(base_dir: str, relative_path: str) -> str:
 
 if __name__ == "__main__":
 
-    logger.add("log/musician_api.log", rotation="500 MB")
+    logger.add("./log/musician_api.log", rotation="50 MB")
 
     # 获取脚本所在目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
