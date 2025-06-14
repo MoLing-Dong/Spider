@@ -1,12 +1,13 @@
 # -*- coding=utf-8 -*-
+import os
 import time
 
 import requests
+from dotenv import load_dotenv
 from loguru import logger
 from lxml import etree
 
 import RSAJS
-from config import settings
 from hex2b64 import HB64
 
 
@@ -74,8 +75,6 @@ class Longin():
             logger.info("用户名或密码不正确，登录失败")
             exit()
 
-
-
     def get_params(self):
         response = self.session.get('http://jwgl.huayu.edu.cn/jwglxt/xjyj/xjyj_cxXjyjIndex.html?gnmkdm=N105505')
         logger.info(response.status_code)
@@ -99,5 +98,8 @@ if __name__ == "__main__":
     table_url = "http://jwgl.huayu.edu.cn/jwglxt/kbcx/xskbcx_cxXsKb.html?gnmkdm=N2151"
     # 登录后的成绩URL
     score_url = "http://jwgl.huayu.edu.cn/jwglxt/xjyj/xjyj_cxXjyjjdlb.html"
-    zspt = Longin(settings.HUAYU_ACCOUNT, settings.HUAYU_PASSWORD, login_url, login_KeyUrl)
+    load_dotenv()
+    USERNAME = os.getenv("HUAYU_ACCOUNT")
+    PASSWORD = os.getenv("HUAYU_PASSWORD")
+    zspt = Longin(USERNAME, "PASSWORD", login_url, login_KeyUrl)
     success_session = zspt.Longin_Home()

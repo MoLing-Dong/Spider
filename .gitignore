@@ -141,7 +141,7 @@ dist
 .secrets.*
 
 .idea/
-网易云/音乐人/user_list.json
+网易云/音乐人/user_list.txt
 
 /e_to_china/*.json
 /e_to_china/*.jsonl

@@ -278,24 +278,18 @@ def main(user_cookies_list: List[Dict[str, str]], js_path: str):
         logger.error(f"处理失败: {e}")
 
 
-def load_user_cookies(file_path: str) -> list:
-    """加载用户 Cookies 列表"""
+def load_file_lines(file_path: str) -> list:
+    """加载文件的每一行到数组中"""
     if not os.path.exists(file_path):
         logger.error(f"文件不存在: {file_path}")
         return []
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            user_cookies_list = json.load(f)
-        if not isinstance(user_cookies_list, list):
-            logger.error(f"文件内容格式错误，应为列表: {file_path}")
-            return []
-        return user_cookies_list
-    except json.JSONDecodeError as e:
-        logger.error(f"解析 JSON 文件失败: {e}")
-        return []
+            lines = [line.strip() for line in f.readlines()]
+        return lines
     except Exception as e:
-        logger.error(f"加载用户 Cookies 失败: {e}")
+        logger.error(f"读取文件失败: {e}")
         return []
 
 
@@ -316,8 +310,8 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # 加载用户 Cookies 列表
-    user_list_file = os.path.join(script_dir, "user_list.json")
-    USER_COOKIES_LIST = load_user_cookies(user_list_file)
+    user_list_file = os.path.join(script_dir, "user_list.txt")
+    USER_COOKIES_LIST = load_file_lines(user_list_file)
 
     if not USER_COOKIES_LIST:
         logger.error("用户 Cookies 列表为空，程序终止")

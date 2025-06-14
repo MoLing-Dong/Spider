@@ -1,111 +1,93 @@
 # -*- coding: utf-8 -*-
-"""统一认证平台的登录
+"""统一认证平台登录（单文件版本）
 """
 import time
-
+import warnings
 import execjs
 import requests
 from loguru import logger
 from lxml import etree
+from dotenv import load_dotenv
+import os
 
-from config import settings
+# 关闭不安全请求警告
+warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
+# 加载 .env 环境变量
+load_dotenv()
+USERNAME = os.getenv("HUAYU_TONGYI_ACCOUNT")
+PASSWORD = os.getenv("HUAYU_TONGYI_PASSWORD")
+
+if not USERNAME or not PASSWORD:
+    raise ValueError("请在 .env 文件中配置 HUAYU_TONGYI_ACCOUNT 和 HUAYU_TONGYI_PASSWORD")
+
+# 域名配置
+AUTH_SERVER_DOMAIN = "http://authserver.huayu.edu.cn"
+EHALL_DOMAIN = "http://ehall.huayu.edu.cn"
 
 def create_session():
-    """创建一个连接会，并配置日志记录
-    """
     session = requests.session()
-    logger.add("list.log", rotation="10 MB", retention="10 days", level="INFO")
+    logger.add("login.log", rotation="5 MB", retention="10 days", level="INFO")
     return session
 
-
-def get_login_page(session, auth_server_domain, ehall_domain):
-    """发送GET请求获取登录页面
-    """
-    response = session.get(
-        f"{auth_server_domain}/authserver/login?service={ehall_domain}%2Flogin%3Fservice%3D{ehall_domain}%2Fywtb-portal%2Fofficial%2Findex.html"
-    )
-    return response
-
+def get_login_page(session):
+    url = f"{AUTH_SERVER_DOMAIN}/authserver/login?service={EHALL_DOMAIN}%2Flogin%3Fservice%3D{EHALL_DOMAIN}%2Fywtb-portal%2Fofficial%2Findex.html"
+    return session.get(url)
 
 def extract_parameters(html_text):
-    """提取加密盘、lt和execution参数
-    """
     tree = etree.HTML(html_text)
-    pwdDefaultEncryptSalt = tree.xpath('//input[@id="pwdDefaultEncryptSalt"]/@value')[0]
+    pwd_salt = tree.xpath('//input[@id="pwdDefaultEncryptSalt"]/@value')[0]
     lt = tree.xpath('//input[@name="lt"]/@value')[0]
     execution = tree.xpath('//input[@name="execution"]/@value')[0]
-    logger.info(f"pwdDefaultEncryptSalt: {pwdDefaultEncryptSalt}, lt: {lt}, execution: {execution}")
-    return pwdDefaultEncryptSalt, lt, execution
+    logger.info(f"提取参数 - salt: {pwd_salt}, lt: {lt}, execution: {execution}")
+    return pwd_salt, lt, execution
 
+def get_encrypted_password(session, password, salt):
+    js_url = f"{AUTH_SERVER_DOMAIN}/authserver/custom/js/encrypt.js"
+    js_code = session.get(js_url, allow_redirects=False).text
+    ctx = execjs.compile(js_code)
+    encrypted = ctx.call("_ep", password, salt)
+    logger.info(f"加密后的密码: {encrypted}")
+    return encrypted
 
-def get_encrypted_password(session, auth_server_domain, password, salt):
-    """获取加密后的密码
-    """
-    response = session.get(f"{auth_server_domain}/authserver/custom/js/encrypt.js", allow_redirects=False)
-    js_code = response.text
-    js_res = execjs.compile(js_code)
-    encrypted_password = js_res.call("_ep", password, salt)
-    logger.info(f"加密后的密码: {encrypted_password}")
-    return encrypted_password
-
-
-def login(session, auth_server_domain, ehall_domain, username, encrypted_password, lt, execution):
-    """发送POST请求进行登录
-    """
+def login(session, encrypted_pwd, lt, execution):
     headers = {
-        "Origin": auth_server_domain,
-        "Proxy-Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Origin": AUTH_SERVER_DOMAIN,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Upgrade-Insecure-Requests": "1"
     }
     params = {
-        "service": f"{ehall_domain}/login?service={ehall_domain}/ywtb-portal/official/index.html",
+        "service": f"{EHALL_DOMAIN}/login?service={EHALL_DOMAIN}/ywtb-portal/official/index.html",
     }
     data = {
-        "username": username,
-        "password": encrypted_password,
+        "username": USERNAME,
+        "password": encrypted_pwd,
         "lt": lt,
         "dllt": "userNamePasswordLogin",
         "execution": execution,
         "_eventId": "submit",
         "rmShown": "1",
     }
-    response = session.post(
-        f"{auth_server_domain}/authserver/login",
-        params=params,
-        headers=headers,
-        data=data,
-        verify=False,
-        allow_redirects=True,
-    )
-    logger.info(f"登录后的cookie: {session.cookies.get_dict()}")
-    return response
+    url = f"{AUTH_SERVER_DOMAIN}/authserver/login"
+    resp = session.post(url, params=params, headers=headers, data=data, verify=False, allow_redirects=True)
+    logger.info(f"登录响应URL: {resp.url}")
+    logger.info(f"Cookies: {session.cookies.get_dict()}")
+    return resp
 
-
-def get_user_info(session, ehall_domain):
-    """发送GET请求获取用户信息
-    """
+def get_user_info(session):
     timestamp = int(time.time() * 1000)
-    response = session.get(f"{ehall_domain}/jsonp/ywtb/info/getUserInfoAndSchoolInfo?_={timestamp}")
-    logger.info(f"用户信息响应: {response.text}")
+    info_url = f"{EHALL_DOMAIN}/jsonp/ywtb/info/getUserInfoAndSchoolInfo?_={timestamp}"
+    response = session.get(info_url)
+    logger.info(f"用户信息: {response.text}")
     return response.text
 
-
 def main():
-    auth_server_domain = "http://authserver.huayu.edu.cn"
-    ehall_domain = "http://ehall.huayu.edu.cn"
-    username = settings.HUAYU_TONGYI_ACCOUNT
-    password = settings.HUAYU_TONGYI_PASSWORD
     session = create_session()
-
-    login_page_response = get_login_page(session, auth_server_domain, ehall_domain)
-    pwdDefaultEncryptSalt, lt, execution = extract_parameters(login_page_response.text)
-    encrypted_password = get_encrypted_password(session, auth_server_domain, password, pwdDefaultEncryptSalt)
-
-    login(session, auth_server_domain, ehall_domain, username, encrypted_password, lt, execution)
-    get_user_info(session, ehall_domain)
-
+    login_page = get_login_page(session)
+    salt, lt, execution = extract_parameters(login_page.text)
+    encrypted_pwd = get_encrypted_password(session, PASSWORD, salt)
+    login(session, encrypted_pwd, lt, execution)
+    get_user_info(session)
 
 if __name__ == "__main__":
     main()
