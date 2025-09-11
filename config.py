@@ -38,6 +38,28 @@ try:
             extra="ignore",
         )
 
+    class GiteaSettings(BaseSettings):
+        """Gitea配置"""
+
+        gitea_base_url: str = Field(
+            "https://gitea.waimaogongshe.cn", description="Gitea地址"
+        )
+        gitea_api_token: str = Field("", description="Gitea API Token")
+        gitea_owner: str = Field("moling.wei", description="仓库拥有者")
+        gitea_repo: str = Field("AI-api", description="仓库名")
+        gitea_author_name: str = Field("moling.wei", description="提交作者名字")
+        gitea_author_email: str = Field(
+            "moling.wei@waimaogongshe.cn", description="提交作者邮箱"
+        )
+        gitea_branch: str = Field("main", description="分支名")
+
+        model_config = SettingsConfigDict(
+            env_file=os.getcwd() + "/.env",
+            env_file_encoding="utf-8",
+            case_sensitive=False,
+            extra="ignore",
+        )
+
 except ImportError:
     # 如果 pydantic_settings 不可用，使用简单的配置类
     class AISettings:
@@ -56,9 +78,26 @@ except ImportError:
             self.min_batch_delay = 2.0
             self.max_batch_delay = 4.0
 
+    class GiteaSettings:
+        """简化的Gitea配置类"""
+
+        def __init__(self):
+            self.gitea_base_url = os.getenv(
+                "GITEA_BASE_URL", "https://gitea.waimaogongshe.cn"
+            )
+            self.gitea_api_token = os.getenv("GITEA_API_TOKEN", "")
+            self.gitea_owner = os.getenv("GITEA_OWNER", "moling.wei")
+            self.gitea_repo = os.getenv("GITEA_REPO", "AI-api")
+            self.gitea_author_name = os.getenv("GITEA_AUTHOR_NAME", "moling.wei")
+            self.gitea_author_email = os.getenv(
+                "GITEA_AUTHOR_EMAIL", "moling.wei@waimaogongshe.cn"
+            )
+            self.gitea_branch = os.getenv("GITEA_BRANCH", "main")
+
 
 # 全局配置实例
 settings = AISettings()
+gitea_settings = GiteaSettings()
 
 # 导出的常量
 AIBASE_LIST = settings.aibase_list_url
