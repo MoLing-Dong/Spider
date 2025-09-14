@@ -1,9 +1,19 @@
 import re
 import json
 import requests
+import sys
+import os
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from loguru import logger
+from openai import OpenAI
+
+# 添加项目根目录到 Python 路径
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# 导入配置
+from config import settings
 
 # 定义 cookies 和 headers
 cookies = {
@@ -136,123 +146,172 @@ def safe_regex_search(pattern, text):
         return None
 
 
+def create_openai_client():
+    """创建 OpenAI 客户端"""
+    try:
+        client = OpenAI(
+            api_key=settings.zhipu_api_key, base_url=settings.zhipu_base_url
+        )
+        return client
+    except Exception as e:
+        logger.error(f"创建 OpenAI 客户端失败: {e}")
+        return None
+
+
+def ai_analyze_shop_data(client, extracted_texts, facebook_url):
+    """使用 AI 分析和清理店铺数据"""
+    if not client:
+        logger.warning("OpenAI 客户端不可用，跳过 AI 分析")
+        return None
+
+    # 准备数据给 AI
+    data_text = "\n".join(extracted_texts)
+
+    system_prompt = """你是一个专业的数据分析师，专门处理社交媒体店铺信息。
+请分析以下Facebook店铺的原始数据，并执行以下任务：
+
+1. 数据清理：
+   - 移除重复信息
+   - 纠正明显的错误
+   - 统一数据格式
+   - 提取最有价值的信息
+
+2. 数据标准化：
+   - 电话号码标准化
+   - 邮箱地址验证
+   - URL格式统一
+   - 地址信息整理
+
+3. 输出要求：
+   - 返回JSON格式
+   - 每个字段只保留最准确的一个值
+   - 如果某个字段没有有效数据，设为null
+   - 粉丝数、关注数等数字要提取纯数字
+
+严格按照以下字段名返回JSON，不要添加或修改字段名：
+{
+    "name": "店铺名称或null",
+    "followers": "粉丝数（纯数字）或null",
+    "following": "关注数（纯数字）或null", 
+    "likes": "点赞数（纯数字）或null",
+    "phone": "标准化电话号码或null",
+    "email": "邮箱地址或null",
+    "website": "网站URL或null",
+    "address": "地址信息或null",
+    "description": "店铺描述或null"
+}
+
+只返回JSON，不要其他解释文字。"""
+
+    user_content = f"请分析以下Facebook店铺数据：\n\nFacebook URL: {facebook_url}\n\n提取的文本内容：\n{data_text}"
+
+    try:
+        response = client.chat.completions.create(
+            model="glm-4-flash",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.1,
+            top_p=0.7,
+            stream=False,
+        )
+
+        ai_result = response.choices[0].message.content.strip()
+        logger.info("AI 分析完成")
+
+        # 清理可能的 markdown 代码块标记
+        ai_result = re.sub(r"```json\s*", "", ai_result)
+        ai_result = re.sub(r"```\s*$", "", ai_result)
+
+        # 检查name字段是否为空，如果为空则用URL补充
+        try:
+            result_json = json.loads(ai_result)
+            if not result_json.get("name") or result_json.get("name") == "null":
+                # 从URL中提取可能的店铺名称
+                url_name = (
+                    facebook_url.split("/")[-1] if "/" in facebook_url else facebook_url
+                )
+                result_json["name"] = url_name
+                ai_result = json.dumps(
+                    result_json, ensure_ascii=False, separators=(",", ":")
+                )
+        except json.JSONDecodeError:
+            logger.warning("无法解析AI返回的JSON，将直接使用原始结果")
+
+        # 直接返回AI生成的JSON字符串
+        return ai_result
+
+    except Exception as e:
+        logger.error(f"AI 分析失败: {e}")
+        return None
+
+
 def main(facebook_url):
     response_text = fetch_web_page(facebook_url, headers)
     if not response_text:
         logger.error("无法获取网页内容")
         return
-    
+
     # 保存原始HTML到文件
     try:
-        with open('/root/Spider/FaceBook/page_content.html', 'w', encoding='utf-8') as f:
+        with open(
+            "/root/Spider/FaceBook/page_content.html", "w", encoding="utf-8"
+        ) as f:
             f.write(response_text)
         logger.info("原始页面HTML已保存到 /root/Spider/FaceBook/page_content.html")
     except Exception as e:
         logger.error(f"保存HTML文件失败: {e}")
 
+    # 简单提取页面文本内容给AI分析
     pattern = r'"text":"([^"]+)"|"content":([^"]+)|"description":([^"]+)'
     matches = extract_text_matches(response_text, pattern)
 
-    like_pattern = r"(\d{1,3}(?:,\d{3})*)(?:\s*万?)?次赞"
-    follower_pattern = r"(\d{1,3}(?:,\d{3})*)(?:\s*万?)?位粉丝"
-    following_pattern = r"关注\s*(\d{1,3}(?:,\d{3})*(?:\s*万?)?)\s*人"
-    phone_pattern = (
-        r"(\+?\d{1,3}[-.\s]?)?(\(\d{1,4}\)|\d{1,4})[-.\s]?(\d{1,4})[-.\s]?(\d{1,9})"
-    )
-    email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-
-    shop_info = {
-        "likes": set(),
-        "followers": set(),
-        "following": set(),
-        "phones": set(),
-        "emails": set(),
-        "urls": set(),
-        "addresses": set(),
-    }
-
+    # 收集所有文本数据
+    extracted_texts = []
     for match in matches:
-        try:
-            # 处理多个捕获组，取第一个非空的值
-            match_text = match[0] if match[0] else (match[1] if match[1] else match[2])
-            if not match_text:
-                continue
-
-            # 安全解码 Unicode 转义序列
+        match_text = match[0] if match[0] else (match[1] if match[1] else match[2])
+        if match_text:
             decoded_match = decode_unicode_escapes(match_text)
-
-            # 安全清洗文本
             cleaned_match = clean_text(decoded_match)
-
-            if not cleaned_match or len(cleaned_match.strip()) == 0:
-                continue
-
-            # 提取点赞数
-            like_match = safe_regex_search(like_pattern, cleaned_match)
-            if like_match:
-                likes = remove_commas(like_match.group(0))
-                shop_info["likes"].add(likes)
-                continue
-
-            # 提取粉丝数
-            follower_match = safe_regex_search(follower_pattern, cleaned_match)
-            if follower_match:
-                followers = remove_commas(follower_match.group(0))
-                shop_info["followers"].add(followers)
-                continue
-
-            # 提取关注数
-            following_match = safe_regex_search(following_pattern, cleaned_match)
-            if following_match:
-                following = remove_commas(following_match.group(1))
-                shop_info["following"].add(following)
-                continue
-
-            # 检查是否为电话号码
-            if safe_regex_search(phone_pattern, cleaned_match):
-                shop_info["phones"].add(cleaned_match)
-                continue
-
-            # 检查是否为电子邮件
-            if safe_regex_search(email_pattern, cleaned_match):
-                shop_info["emails"].add(cleaned_match)
-                continue
-
-            # 检查是否为 URL
-            if safe_regex_search(url_pattern, cleaned_match):
-                shop_info["urls"].add(cleaned_match)
-                continue
-
-            # 如果以上都不是，且字符串有多个单词，则视为地址
-            if len(cleaned_match.split()) > 3:
-                shop_info["addresses"].add(cleaned_match)
-
-        except Exception as e:
-            logger.error(f"处理匹配项时出错: {e}")
-            continue
+            if cleaned_match and len(cleaned_match.strip()) > 0:
+                extracted_texts.append(cleaned_match)
 
     # 保存解码后的内容到文件
     try:
-        with open('/root/Spider/FaceBook/decoded_content.txt', 'w', encoding='utf-8') as f:
-            for match in matches:
-                match_text = match[0] if match[0] else (match[1] if match[1] else match[2])
-                if match_text:
-                    decoded_match = decode_unicode_escapes(match_text)
-                    cleaned_match = clean_text(decoded_match)
-                    if cleaned_match and len(cleaned_match.strip()) > 0:
-                        f.write(f"{cleaned_match}\n")
+        with open(
+            "/root/Spider/FaceBook/decoded_content.txt", "w", encoding="utf-8"
+        ) as f:
+            for text in extracted_texts:
+                f.write(f"{text}\n")
         logger.info("解码后的内容已保存到 /root/Spider/FaceBook/decoded_content.txt")
     except Exception as e:
         logger.error(f"保存解码内容文件失败: {e}")
 
-    # 输出提取的信息
-    for key, values in shop_info.items():
-        if values:
-            for value in values:
-                logger.info(f"{key}: {value}")
+    # 使用 AI 分析和清理数据
+    logger.info("开始 AI 数据分析...")
+    ai_client = create_openai_client()
+
+    if ai_client:
+        final_result = ai_analyze_shop_data(ai_client, extracted_texts, facebook_url)
+        if final_result:
+            # 直接打印AI生成的JSON
+            print(final_result)
+
+            # 保存结果到文件
+            output_file = "/root/Spider/FaceBook/shop_analysis_result.json"
+            try:
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(final_result)
+                logger.info(f"分析结果已保存到 {output_file}")
+            except Exception as e:
+                logger.error(f"保存分析结果失败: {e}")
         else:
-            logger.info(f"{key}: 无数据")
+            logger.error("AI 分析失败，无法获取结果")
+    else:
+        logger.error("AI 客户端不可用，无法进行分析")
+
+    return final_result if ai_client and final_result else None
 
 
 if __name__ == "__main__":
