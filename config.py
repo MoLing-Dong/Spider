@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-AI早报生成器配置管理模块
-"""
 import os
 from typing import Optional
 from pathlib import Path
@@ -60,6 +57,22 @@ try:
             extra="ignore",
         )
 
+    class IpzanSettings(BaseSettings):
+        """Iipzan配置"""
+
+        IPZAN_CONFIG_NO: str = Field("", description="IPZAN配置NO")
+        IPZAN_CONFIG_LOGIN_PASSWORD: str = Field("", description="IPZAN配置登录密码")
+        IPZAN_CONFIG_PACKAGE_KEY: str = Field("", description="IPZAN配置包密钥")
+        IPZAN_CONFIG_SIGN_KEY: str = Field("", description="IPZAN配置签名密钥")
+        IPZAN_CONFIG_USER_ID: str = Field("", description="IPZAN配置用户ID")
+
+        model_config = SettingsConfigDict(
+            env_file=os.getcwd() + "/.env",
+            env_file_encoding="utf-8",
+            case_sensitive=False,
+            extra="ignore",
+        )
+
 except ImportError:
     # 如果 pydantic_settings 不可用，使用简单的配置类
     class AISettings:
@@ -77,6 +90,16 @@ except ImportError:
             self.max_delay = 1.5
             self.min_batch_delay = 2.0
             self.max_batch_delay = 4.0
+
+    class IpzanSettings:
+        """简化的Ipzan配置类"""
+
+        def __init__(self):
+            self.IPZAN_CONFIG_NO = os.getenv("IPZAN_CONFIG_NO", "")
+            self.IPZAN_CONFIG_LOGIN_PASSWORD = os.getenv("IPZAN_CONFIG_LOGIN_PASSWORD", "")
+            self.IPZAN_CONFIG_PACKAGE_KEY = os.getenv("IPZAN_CONFIG_PACKAGE_KEY", "")
+            self.IPZAN_CONFIG_SIGN_KEY = os.getenv("IPZAN_CONFIG_SIGN_KEY", "")
+            self.IPZAN_CONFIG_USER_ID = os.getenv("IPZAN_CONFIG_USER_ID", "")
 
     class GiteaSettings:
         """简化的Gitea配置类"""
@@ -98,7 +121,7 @@ except ImportError:
 # 全局配置实例
 settings = AISettings()
 gitea_settings = GiteaSettings()
-
+ipzan_settings = IpzanSettings()
 # 导出的常量
 AIBASE_LIST = settings.aibase_list_url
 TZ_OFFSET = 8  # 时区偏移（小时）
